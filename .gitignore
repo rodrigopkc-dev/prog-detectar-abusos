@@ -1,0 +1,59 @@
+# --- CONFIGURAÇÕES DO SEU PROJETO ---
+# Arquivos de credenciais e variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Logs gerados pelo processamento (como o log do YOLO)
+log_*.txt
+*.log
+
+# Arquivos de mídia gerados localmente (pastas de áudio extraído)
+audio/
+*.mp3
+
+# Pesos de modelos de IA (YOLO) se forem baixados na raiz
+*.pt
+
+# --- PADRÃO PYTHON ---
+# Arquivos compilados
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribuição / Pacotes
+beans/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Ambientes Virtuais (Virtual Environments)
+.env
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# --- IDEs E EDITORES (VS Code / PyCharm) ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*~
