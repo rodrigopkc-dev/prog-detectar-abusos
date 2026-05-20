@@ -5,10 +5,10 @@ from ultralytics import YOLO
 
 def analisar_video_yolo(video_path, model_path=r'D:\\notebook2\\python\\yolov8_facial_FAST_20260508_2217_medio\\weights\\best.pt'):
     """
-    Roda a detecção de expressões faciais frame a frame usando OpenCV e YOLO.
-    Retorna um dicionário estruturado com os resultados obtidos e gera um arquivo .txt de log.
+    Roda a detecção de expressões faciais focado exclusivamente em Fear, Sad, Angry e Disgust.
+    Ajustado com maior tolerância para evitar alarmes falsos em frames isolados.
     """
-    print(f"--- Iniciando Análise YOLO no {video_path} ---")
+    print(f"--- Iniciando Análise de Risco YOLO no {video_path} ---")
     
     if not os.path.exists(video_path):
         return {
@@ -28,14 +28,17 @@ def analisar_video_yolo(video_path, model_path=r'D:\\notebook2\\python\\yolov8_f
 
         fps = cap.get(cv2.CAP_PROP_FPS)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        skip_frames = 1  # Analisar todos os frames (sem perdas)
+        skip_frames = 1  # Analisa todos os frames para manter a precisão temporal
 
         # Dicionários e listas para coleta
         estatisticas = {label: 0 for label in model.names.values()}
         alertas_criticos = []
-        sentimentos_alerta = ['Fear', 'Sad', 'Angry', 'Disgust']
+        
+        # FOCO EXCLUSIVO: Padrões de sofrimento, violência e desconforto
+        #sentimentos_alerta = ['Fear', 'Sad', 'Angry', 'Disgust']
+        sentimentos_alerta = ['Fear', 'Sad', 'Angry']
 
-        print(f"Processando frames com YOLO de Alta Sensibilidade...")
+        print(f"Monitorando padrões de desconforto com filtros calibrados...")
         inicio_proc = time.time()
         frame_idx = 0
 
@@ -45,7 +48,9 @@ def analisar_video_yolo(video_path, model_path=r'D:\\notebook2\\python\\yolov8_f
                 break
 
             if frame_idx % skip_frames == 0:
-                results = model.predict(frame, conf=0.25, verbose=False) 
+                # AJUSTE 1: Subimos para 0.42. Corta falsos positivos cruciais
+                # onde o modelo "chuta" que um rosto neutro está triste ou bravo.
+                results = model.predict(frame, conf=0.42, verbose=False) 
                 
                 timestamp = frame_idx / fps
                 minutos = int(timestamp // 60)
@@ -65,42 +70,47 @@ def analisar_video_yolo(video_path, model_path=r'D:\\notebook2\\python\\yolov8_f
         fim_proc = time.time()
         tempo_total_video = frame_idx / fps
 
-        # Métricas de Cálculo de Risco
+        # Cálculos de Indicadores de Sofrimento
         score_risco = sum(estatisticas[s] for s in sentimentos_alerta)
+        
+        # Identifica quantos segundos únicos do vídeo contiveram alertas
         segundos_em_alerta = len(set([a.split("]")[0].replace("[", "") for a in alertas_criticos]))
         taxa_presenca_alerta = (segundos_em_alerta / tempo_total_video) * 100 if tempo_total_video > 0 else 0
 
-        # Definição do Veredito
-        if score_risco >= 30 or taxa_presenca_alerta > 10:
-            veredito = "[CRÍTICO] ALTO RISCO - Padrões de sofrimento/violência detectados."
-        elif score_risco > 5 or taxa_presenca_alerta > 2:
-            veredito = "[ATENÇÃO] RISCO MODERADO - Sinais isolados ou microexpressões de alerta."
+        # =======================================================
+        # LÓGICA DE VEREDITO EQUILIBRADA (Sem ser severa demais)
+        # =======================================================
+        # AJUSTE 2: Agora exige um volume real de frames ou uma presença persistente no vídeo
+        if score_risco >= 90 or taxa_presenca_alerta > 18:
+            veredito = "[CRÍTICO] ALTO RISCO - Padrões frequentes e persistentes de sofrimento/desconforto detectados."
+        elif score_risco > 25 or taxa_presenca_alerta > 4:
+            veredito = "[ATENÇÃO] RISCO MODERADO - Sinais isolados ou flutuações emocionais negativas pontuais."
         else:
-            veredito = "[NORMALIDADE] Sem sinais expressivos de desconforto."
+            veredito = "[NORMALIDADE] Sem sinais expressivos ou contínuos de desconforto."
 
-        # --- NOVA PARTE: GERAR ARQUIVO DE LOG COMPLETO ---
-        alertas_limpos = list(dict.fromkeys(alertas_criticos)) # Remove duplicados exatos no mesmo segundo
+        # --- GERAR ARQUIVO DE LOG DE AUDITORIA ---
+        alertas_limpos = list(dict.fromkeys(alertas_criticos)) 
         nome_base = os.path.splitext(os.path.basename(video_path))[0]
-        arquivo_log = f"log_{nome_base}.txt"
+        arquivo_log = f"log_risco_{nome_base}.txt"
         
         with open(arquivo_log, "w", encoding="utf-8") as f:
-            f.write(f"=== LOG DE MOMENTOS CRÍTICOS ===\n")
-            f.write(f"Vídeo analisado: {video_path}\n")
-            f.write(f"Data/Hora do processamento: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write(f"Total de alertas gerados: {len(alertas_limpos)}\n")
-            f.write(f"Veredito do YOLO: {veredito}\n")
-            f.write("="*40 + "\n\n")
+            f.write(f"=== ANÁLISE DE COMPORTAMENTO CRÍTICO ===\n")
+            f.write(f"Arquivo analisado: {video_path}\n")
+            f.write(f"Data do disparo: {time.strftime('%Y-%m-%d %H:%M:%S')}\n")
+            f.write(f"Total de frames de desconforto acumulados: {score_risco}\n")
+            f.write(f"Presença de tensão na linha do tempo: {taxa_presenca_alerta:.1f}%\n")
+            f.write(f"VEREDITO FINAL: {veredito}\n")
+            f.write("="*50 + "\n\n")
             
             if not alertas_limpos:
-                f.write("Nenhum sinal de alerta detectado.\n")
+                f.write("Nenhum padrão de sofrimento expressivo foi mapeado.\n")
             else:
+                f.write("Log cronológico das ocorrências:\n")
                 for alerta in alertas_limpos:
-                    f.write(f"⚠ {alerta}\n")
+                    f.write(f" ⚠ {alerta}\n")
                     
-        print(f"Arquivo de log completo gerado com sucesso: '{arquivo_log}'")
-        print("Análise YOLO concluída com sucesso!\n")
+        print(f"Log gerado com sucesso: '{arquivo_log}'")
         
-        # Retorna os dados estruturados para o script principal
         return {
             "status": "SUCESSO",
             "tempo_processamento": int(fim_proc - inicio_proc),
@@ -109,7 +119,7 @@ def analisar_video_yolo(video_path, model_path=r'D:\\notebook2\\python\\yolov8_f
             "score_risco": score_risco,
             "taxa_presenca_alerta": taxa_presenca_alerta,
             "veredito": veredito,
-            "arquivo_log": arquivo_log # Passa o nome do arquivo gerado para o principal se quiser usar
+            "arquivo_log": arquivo_log
         }
         
     except Exception as e:
